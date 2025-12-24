@@ -24,6 +24,7 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminLearningPaths from "./pages/admin/AdminLearningPaths";
 import AdminCertificates from "./pages/admin/AdminCertificates";
 import AdminBlogPosts from "./pages/admin/AdminBlogPosts";
+import AdminBlogEditor from "./pages/admin/AdminBlogEditor";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminPlatformSettings from "./pages/admin/AdminPlatformSettings";
 
@@ -58,6 +59,8 @@ const App = () => (
           <Route path="/admin/learning-paths" element={<AdminProtectedRoute><AdminLearningPaths /></AdminProtectedRoute>} />
           <Route path="/admin/certificates" element={<AdminProtectedRoute><AdminCertificates /></AdminProtectedRoute>} />
           <Route path="/admin/blog" element={<AdminProtectedRoute><AdminBlogPosts /></AdminProtectedRoute>} />
+          <Route path="/admin/blog/new" element={<AdminProtectedRoute><AdminBlogEditor /></AdminProtectedRoute>} />
+          <Route path="/admin/blog/:id/edit" element={<AdminProtectedRoute><AdminBlogEditor /></AdminProtectedRoute>} />
           <Route path="/admin/audit-logs" element={<AdminProtectedRoute><AdminAuditLogs /></AdminProtectedRoute>} />
           <Route path="/admin/platform-settings" element={<AdminProtectedRoute><AdminPlatformSettings /></AdminProtectedRoute>} />
           
