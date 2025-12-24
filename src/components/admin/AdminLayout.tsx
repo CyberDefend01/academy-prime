@@ -10,7 +10,13 @@ import {
   Settings,
   LogOut,
   Shield,
-  ChevronLeft
+  ChevronLeft,
+  FolderOpen,
+  Route,
+  Award,
+  FileText,
+  ClipboardList,
+  Wrench
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,9 +30,15 @@ interface AdminLayoutProps {
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   { icon: BookOpen, label: "Courses", path: "/admin/courses" },
+  { icon: FolderOpen, label: "Categories", path: "/admin/categories" },
+  { icon: Route, label: "Learning Paths", path: "/admin/learning-paths" },
   { icon: Users, label: "Users", path: "/admin/users" },
+  { icon: Award, label: "Certificates", path: "/admin/certificates" },
+  { icon: FileText, label: "Blog Posts", path: "/admin/blog" },
   { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
   { icon: Star, label: "Testimonials", path: "/admin/testimonials" },
+  { icon: ClipboardList, label: "Audit Logs", path: "/admin/audit-logs" },
+  { icon: Wrench, label: "Settings", path: "/admin/settings" },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
