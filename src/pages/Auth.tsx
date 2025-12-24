@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import academyLogo from "@/assets/logo.png";
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -36,65 +38,101 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const authSchema = z.object({
+    email: z.string().trim().email("Enter a valid email address").max(255, "Email is too long"),
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters")
+      .max(72, "Password is too long"),
+  });
+
+  const fullNameSchema = z.string().trim().max(100, "Full name is too long");
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please fill in all required fields");
+
+    const parsed = authSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid sign up details");
+      return;
+    }
+
+    const parsedFullName = fullNameSchema.safeParse(fullName);
+    if (!parsedFullName.success) {
+      toast.error(parsedFullName.error.issues[0]?.message ?? "Invalid name");
       return;
     }
 
     setLoading(true);
-    const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const safeFullName = fullName.trim();
+
+      const { data, error } = await supabase.auth.signUp({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: safeFullName ? { full_name: safeFullName } : undefined,
         },
-      },
-    });
+      });
 
-    setLoading(false);
-
-    if (error) {
-      if (error.message.includes("already registered")) {
-        toast.error("This email is already registered. Please sign in instead.");
-      } else {
-        toast.error(error.message);
+      if (error) {
+        if (error.message.toLowerCase().includes("already")) {
+          toast.error("This email is already registered. Please sign in instead.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
       }
-    } else {
-      toast.success("Account created successfully! Welcome to Cyber Defend Africa.");
-      navigate("/");
+
+      if (data.session?.user) {
+        toast.success("Account created — you're signed in.");
+        navigate("/");
+      } else {
+        toast.success("Account created. Please sign in to continue.");
+        setTab("signin");
+      }
+    } catch {
+      toast.error("Sign up failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please enter your email and password");
+
+    const parsed = authSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid sign in details");
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
 
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
 
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        toast.error("Invalid email or password. Please try again.");
-      } else {
-        toast.error(error.message);
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password. Please try again.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
       }
-    } else {
+
       toast.success("Welcome back!");
       navigate("/");
+    } catch {
+      toast.error("Sign in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,7 +158,7 @@ export default function Auth() {
           </div>
 
           <Card className="glass-card gradient-border">
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-secondary/50">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -132,7 +170,7 @@ export default function Auth() {
                   <CardDescription>Sign in to continue your learning journey</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSignIn} className="space-y-4">
+                  <form noValidate onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signin-email">Email</Label>
                       <div className="relative">
@@ -181,7 +219,7 @@ export default function Auth() {
                   <CardDescription>Start your cybersecurity journey today</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSignUp} className="space-y-4">
+                  <form noValidate onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-name">Full Name</Label>
                       <div className="relative">
