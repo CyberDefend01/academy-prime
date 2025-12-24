@@ -13,6 +13,7 @@ import BlogPost from "./pages/BlogPost";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { AdminProtectedRoute } from "./components/admin/AdminProtectedRoute";
+import { ProtectedRoute } from "./components/dashboard/ProtectedRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminCourseEditor from "./pages/admin/AdminCourseEditor";
@@ -27,6 +28,17 @@ import AdminBlogPosts from "./pages/admin/AdminBlogPosts";
 import AdminBlogEditor from "./pages/admin/AdminBlogEditor";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminPlatformSettings from "./pages/admin/AdminPlatformSettings";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import StudentCourses from "./pages/student/StudentCourses";
+import StudentCertificates from "./pages/student/StudentCertificates";
+import StudentPaths from "./pages/student/StudentPaths";
+import StudentSettings from "./pages/student/StudentSettings";
+import InstructorDashboard from "./pages/instructor/InstructorDashboard";
+import InstructorCourses from "./pages/instructor/InstructorCourses";
+import InstructorCourseEditor from "./pages/instructor/InstructorCourseEditor";
+import InstructorStudents from "./pages/instructor/InstructorStudents";
+import InstructorAnalytics from "./pages/instructor/InstructorAnalytics";
+import InstructorSettings from "./pages/instructor/InstructorSettings";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +57,22 @@ const App = () => (
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/auth" element={<Auth />} />
+          
+          {/* Student Routes */}
+          <Route path="/student" element={<ProtectedRoute allowedRoles={["user", "student"]}><StudentDashboard /></ProtectedRoute>} />
+          <Route path="/student/courses" element={<ProtectedRoute allowedRoles={["user", "student"]}><StudentCourses /></ProtectedRoute>} />
+          <Route path="/student/certificates" element={<ProtectedRoute allowedRoles={["user", "student"]}><StudentCertificates /></ProtectedRoute>} />
+          <Route path="/student/paths" element={<ProtectedRoute allowedRoles={["user", "student"]}><StudentPaths /></ProtectedRoute>} />
+          <Route path="/student/settings" element={<ProtectedRoute allowedRoles={["user", "student"]}><StudentSettings /></ProtectedRoute>} />
+          
+          {/* Instructor Routes */}
+          <Route path="/instructor" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorDashboard /></ProtectedRoute>} />
+          <Route path="/instructor/courses" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorCourses /></ProtectedRoute>} />
+          <Route path="/instructor/courses/new" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorCourseEditor /></ProtectedRoute>} />
+          <Route path="/instructor/courses/:id/edit" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorCourseEditor /></ProtectedRoute>} />
+          <Route path="/instructor/students" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorStudents /></ProtectedRoute>} />
+          <Route path="/instructor/analytics" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorAnalytics /></ProtectedRoute>} />
+          <Route path="/instructor/settings" element={<ProtectedRoute allowedRoles={["instructor"]}><InstructorSettings /></ProtectedRoute>} />
           
           {/* Admin Routes - Protected */}
           <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
