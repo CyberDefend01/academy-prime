@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Layout } from "@/components/layout/Layout";
@@ -6,72 +6,125 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, Lock, User, Loader2 } from "lucide-react";
+import { Loader2, Lock, Mail, Phone, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { CyberGrid } from "@/components/ui/CyberGrid";
 import academyLogo from "@/assets/logo.png";
 
 export default function Auth() {
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"signin" | "signup">("signin");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate("/");
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) navigate("/");
     });
 
     (async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
         if (error) throw error;
         if (session?.user) navigate("/");
-      } catch (err: any) {
-        // Non-sensitive, user-facing error
-        setInlineError("Authentication service is unavailable. Please refresh and try again.");
+      } catch {
+        setInlineError(
+          "Authentication service is unavailable. Please refresh and try again.",
+        );
         toast.error("Authentication service is unavailable.");
-        console.error("Auth session check failed");
       }
     })();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const authSchema = z.object({
-    email: z.string().trim().email("Enter a valid email address").max(255, "Email is too long"),
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .max(72, "Password is too long"),
+  const emailSchema = z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .max(255, "Email is too long");
+
+  const passwordSchema = z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .max(72, "Password is too long");
+
+  const phoneSchema = z
+    .string()
+    .trim()
+    .min(7, "Phone number is too short")
+    .max(20, "Phone number is too long")
+    .regex(/^[0-9+\-().\s]+$/, "Enter a valid phone number");
+
+  const signInSchema = z.object({
+    email: emailSchema,
+    password: passwordSchema,
   });
 
-  const fullNameSchema = z.string().trim().max(100, "Full name is too long");
+  const signUpSchema = z
+    .object({
+      fullName: z
+        .string()
+        .trim()
+        .min(1, "Full name is required")
+        .max(100, "Full name is too long"),
+      phone: phoneSchema,
+      email: emailSchema,
+      password: passwordSchema,
+      confirmPassword: z.string(),
+    })
+    .superRefine(({ password, confirmPassword }, ctx) => {
+      if (password !== confirmPassword) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["confirmPassword"],
+          message: "Passwords do not match",
+        });
+      }
+    });
+
+  const clearSensitiveFields = () => {
+    setPassword("");
+    setConfirmPassword("");
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setInlineError(null);
 
-    const parsed = authSchema.safeParse({ email, password });
+    const parsed = signUpSchema.safeParse({
+      fullName,
+      phone,
+      email,
+      password,
+      confirmPassword,
+    });
+
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message ?? "Invalid sign up details";
-      setInlineError(msg);
-      toast.error(msg);
-      return;
-    }
-
-    const parsedFullName = fullNameSchema.safeParse(fullName);
-    if (!parsedFullName.success) {
-      const msg = parsedFullName.error.issues[0]?.message ?? "Invalid name";
       setInlineError(msg);
       toast.error(msg);
       return;
@@ -81,14 +134,16 @@ export default function Auth() {
 
     try {
       const redirectUrl = `${window.location.origin}/`;
-      const safeFullName = fullName.trim();
 
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: safeFullName ? { full_name: safeFullName } : undefined,
+          data: {
+            full_name: parsed.data.fullName,
+            phone: parsed.data.phone,
+          },
         },
       });
 
@@ -101,14 +156,9 @@ export default function Auth() {
         return;
       }
 
-      // If email confirmations are enabled, session can be null.
-      if (data.session?.user) {
-        toast.success("Account created — you're signed in.");
-        navigate("/");
-      } else {
-        toast.success("Account created. Please sign in to continue.");
-        setTab("signin");
-      }
+      toast.success("Account created. Please verify your email, then sign in.");
+      setTab("signin");
+      clearSensitiveFields();
     } catch {
       const msg = "Sign up failed. Please try again.";
       setInlineError(msg);
@@ -122,7 +172,7 @@ export default function Auth() {
     e.preventDefault();
     setInlineError(null);
 
-    const parsed = authSchema.safeParse({ email, password });
+    const parsed = signInSchema.safeParse({ email, password });
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message ?? "Invalid sign in details";
       setInlineError(msg);
@@ -139,9 +189,12 @@ export default function Auth() {
       });
 
       if (error) {
-        const msg = error.message.includes("Invalid login credentials")
+        const lower = error.message.toLowerCase();
+        const msg = lower.includes("invalid login credentials")
           ? "Invalid email or password. Please try again."
-          : error.message;
+          : lower.includes("email") && lower.includes("confirm")
+            ? "Please verify your email first (check your inbox), then sign in."
+            : error.message;
         setInlineError(msg);
         toast.error(msg);
         return;
@@ -162,21 +215,26 @@ export default function Auth() {
     <Layout>
       <section className="relative min-h-[80vh] flex items-center justify-center py-20 overflow-hidden">
         <CyberGrid />
-        
-        <motion.div 
+
+        <motion.div
           className="relative z-10 w-full max-w-md px-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           <div className="text-center mb-8">
-            <img 
-              src={academyLogo} 
-              alt="Cyber Defend Africa Academy" 
+            <img
+              src={academyLogo}
+              alt="Cyber Defend Africa Academy"
               className="w-24 h-24 mx-auto mb-4 object-contain"
+              loading="lazy"
             />
-            <h1 className="font-display text-2xl font-bold text-foreground">Cyber Defend Africa</h1>
-            <p className="text-muted-foreground mt-2">Your gateway to cybersecurity excellence</p>
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              Cyber Defend Africa
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Your gateway to cybersecurity excellence
+            </p>
           </div>
 
           <Card className="glass-card gradient-border">
@@ -193,6 +251,7 @@ export default function Auth() {
               onValueChange={(v) => {
                 setTab(v as "signin" | "signup");
                 setInlineError(null);
+                clearSensitiveFields();
               }}
               className="w-full"
             >
@@ -204,7 +263,9 @@ export default function Auth() {
               <TabsContent value="signin">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl">Welcome back</CardTitle>
-                  <CardDescription>Sign in to continue your learning journey</CardDescription>
+                  <CardDescription>
+                    Sign in after you’ve verified your email
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form noValidate onSubmit={handleSignIn} className="space-y-4">
@@ -223,6 +284,7 @@ export default function Auth() {
                         />
                       </div>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="signin-password">Password</Label>
                       <div className="relative">
@@ -238,12 +300,15 @@ export default function Auth() {
                         />
                       </div>
                     </div>
-                    <Button 
-                      type="submit" 
+
+                    <Button
+                      type="submit"
                       className="w-full bg-gradient-to-r from-primary to-cyan hover:from-primary/90 hover:to-cyan/90"
                       disabled={loading}
                     >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {loading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
                       Sign In
                     </Button>
                   </form>
@@ -253,7 +318,9 @@ export default function Auth() {
               <TabsContent value="signup">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl">Create an account</CardTitle>
-                  <CardDescription>Start your cybersecurity journey today</CardDescription>
+                  <CardDescription>
+                    We’ll email you a verification link after signup
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form noValidate onSubmit={handleSignUp} className="space-y-4">
@@ -268,9 +335,27 @@ export default function Auth() {
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                           className="pl-10"
+                          required
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-phone">Phone Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="signup-phone"
+                          type="tel"
+                          placeholder="+234 800 000 0000"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
                       <div className="relative">
@@ -286,6 +371,7 @@ export default function Auth() {
                         />
                       </div>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
                       <div className="relative">
@@ -302,12 +388,31 @@ export default function Auth() {
                         />
                       </div>
                     </div>
-                    <Button 
-                      type="submit" 
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="signup-confirm-password"
+                          type="password"
+                          placeholder="Re-enter password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
                       className="w-full bg-gradient-to-r from-primary to-cyan hover:from-primary/90 hover:to-cyan/90"
                       disabled={loading}
                     >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {loading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
                       Create Account
                     </Button>
                   </form>
@@ -320,3 +425,4 @@ export default function Auth() {
     </Layout>
   );
 }
+
