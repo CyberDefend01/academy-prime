@@ -15,9 +15,13 @@ import {
   ArrowRight,
   GraduationCap,
   Trophy,
+  Target,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
+import { CountdownTimer } from "@/components/ui/CountdownTimer";
 
 export default function StudentDashboard() {
   const { user } = useUserRole();
@@ -71,6 +75,51 @@ export default function StudentDashboard() {
     },
     enabled: !!user?.id,
   });
+
+  // Fetch assignments for enrolled courses
+  const { data: assignments } = useQuery({
+    queryKey: ["student-course-assignments", user?.id],
+    queryFn: async () => {
+      if (!user?.id || !enrollments?.length) return [];
+      const courseIds = enrollments.map((e) => e.course_id).filter(Boolean);
+      if (courseIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from("assignments")
+        .select("*")
+        .in("course_id", courseIds)
+        .order("due_date", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id && !!enrollments?.length,
+  });
+
+  // Fetch submissions
+  const { data: submissions } = useQuery({
+    queryKey: ["student-all-submissions", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("assignment_submissions")
+        .select("*")
+        .eq("student_id", user.id);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Get upcoming assignments with deadlines
+  const upcomingAssignments = assignments
+    ?.filter((a) => {
+      const hasDeadline = a.due_date && new Date(a.due_date) > new Date();
+      const notSubmitted = !submissions?.find((s) => s.assignment_id === a.id);
+      return hasDeadline && notSubmitted;
+    })
+    .slice(0, 3) || [];
 
   const inProgressCourses = enrollments?.filter((e) => !e.completed_at) || [];
   const completedCourses = enrollments?.filter((e) => e.completed_at) || [];
@@ -159,6 +208,83 @@ export default function StudentDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Course Progress Analytics */}
+        {inProgressCourses.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Course Progress & Analytics
+              </h2>
+              <Link to="/student/courses">
+                <Button variant="ghost" size="sm">
+                  View All <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {inProgressCourses.slice(0, 3).map((enrollment) => {
+                const courseAssignments = assignments?.filter(
+                  (a) => a.course_id === enrollment.course_id
+                ) || [];
+                const courseSubmissions = submissions?.filter((s) =>
+                  courseAssignments.some((a) => a.id === s.assignment_id)
+                ) || [];
+
+                return (
+                  <CourseProgressCard
+                    key={enrollment.id}
+                    courseName={enrollment.course?.title || "Unknown Course"}
+                    totalPoints={enrollment.course?.total_points || 100}
+                    assignments={courseAssignments}
+                    submissions={courseSubmissions}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming Deadlines */}
+        {upcomingAssignments.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-500" />
+                Upcoming Deadlines
+              </CardTitle>
+              <Link to="/student/assignments">
+                <Button variant="ghost" size="sm">
+                  View All <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {upcomingAssignments.map((assignment) => (
+                  <div
+                    key={assignment.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-foreground">{assignment.title}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Weight: {assignment.weight || 10} pts | Max: {assignment.max_score} pts
+                        </p>
+                      </div>
+                    </div>
+                    <CountdownTimer targetDate={assignment.due_date} compact />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Continue Learning */}

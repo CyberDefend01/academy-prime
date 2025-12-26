@@ -32,6 +32,7 @@ export default function InstructorAssignments() {
   const [courseId, setCourseId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [maxScore, setMaxScore] = useState("100");
+  const [weight, setWeight] = useState("10");
   
   // Grade form state
   const [score, setScore] = useState("");
@@ -88,6 +89,7 @@ export default function InstructorAssignments() {
         instructor_id: user?.id,
         due_date: dueDate || null,
         max_score: parseInt(maxScore),
+        weight: parseInt(weight),
       });
       if (error) throw error;
     },
@@ -134,6 +136,7 @@ export default function InstructorAssignments() {
     setCourseId("");
     setDueDate("");
     setMaxScore("100");
+    setWeight("10");
   };
 
   const pendingSubmissions = submissions?.filter((s: any) => s.score === null);
@@ -193,7 +196,7 @@ export default function InstructorAssignments() {
                     rows={4}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label>Due Date</Label>
                     <Input
@@ -208,6 +211,15 @@ export default function InstructorAssignments() {
                       type="number"
                       value={maxScore}
                       onChange={(e) => setMaxScore(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Weight (Points)</Label>
+                    <Input
+                      type="number"
+                      value={weight}
+                      onChange={(e) => setWeight(e.target.value)}
+                      placeholder="Assignment weight for course grade"
                     />
                   </div>
                 </div>
@@ -257,9 +269,14 @@ export default function InstructorAssignments() {
                         <CardTitle>{assignment.title}</CardTitle>
                         <CardDescription>{assignment.courses?.title || "General"}</CardDescription>
                       </div>
-                      <Badge variant="outline">
-                        Max: {assignment.max_score} pts
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">
+                          Max: {assignment.max_score} pts
+                        </Badge>
+                        <Badge variant="secondary">
+                          Weight: {assignment.weight || 10} pts
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
