@@ -62,6 +62,7 @@ export type Database = {
           graded_at: string | null
           graded_by: string | null
           id: string
+          is_late: boolean | null
           score: number | null
           student_id: string
           submission_text: string | null
@@ -75,6 +76,7 @@ export type Database = {
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          is_late?: boolean | null
           score?: number | null
           student_id: string
           submission_text?: string | null
@@ -88,6 +90,7 @@ export type Database = {
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          is_late?: boolean | null
           score?: number | null
           student_id?: string
           submission_text?: string | null
@@ -116,6 +119,7 @@ export type Database = {
           max_score: number | null
           title: string
           updated_at: string
+          weight: number | null
         }
         Insert: {
           course_id?: string | null
@@ -127,6 +131,7 @@ export type Database = {
           max_score?: number | null
           title: string
           updated_at?: string
+          weight?: number | null
         }
         Update: {
           course_id?: string | null
@@ -138,6 +143,7 @@ export type Database = {
           max_score?: number | null
           title?: string
           updated_at?: string
+          weight?: number | null
         }
         Relationships: [
           {
@@ -572,6 +578,7 @@ export type Database = {
           submitted_at: string | null
           thumbnail: string | null
           title: string
+          total_points: number | null
           updated_at: string
         }
         Insert: {
@@ -603,6 +610,7 @@ export type Database = {
           submitted_at?: string | null
           thumbnail?: string | null
           title: string
+          total_points?: number | null
           updated_at?: string
         }
         Update: {
@@ -634,6 +642,7 @@ export type Database = {
           submitted_at?: string | null
           thumbnail?: string | null
           title?: string
+          total_points?: number | null
           updated_at?: string
         }
         Relationships: [

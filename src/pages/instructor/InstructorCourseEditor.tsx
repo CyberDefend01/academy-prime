@@ -71,6 +71,7 @@ export default function InstructorCourseEditor() {
     price: 0,
     original_price: 0,
     thumbnail: "",
+    total_points: 100,
   });
 
   const { isLoading: courseLoading } = useQuery({
@@ -97,6 +98,7 @@ export default function InstructorCourseEditor() {
         price: data.price || 0,
         original_price: data.original_price || 0,
         thumbnail: data.thumbnail || "",
+        total_points: data.total_points || 100,
       });
       
       return data;
@@ -313,7 +315,7 @@ export default function InstructorCourseEditor() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="price">Price ($)</Label>
                 <Input
@@ -324,7 +326,7 @@ export default function InstructorCourseEditor() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="original_price">Original Price ($) (optional)</Label>
+                <Label htmlFor="original_price">Original Price ($)</Label>
                 <Input
                   id="original_price"
                   type="number"
@@ -332,6 +334,19 @@ export default function InstructorCourseEditor() {
                   onChange={(e) => setFormData({ ...formData, original_price: parseFloat(e.target.value) || 0 })}
                   placeholder="For showing discounts"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="total_points">Total Course Points</Label>
+                <Input
+                  id="total_points"
+                  type="number"
+                  value={formData.total_points}
+                  onChange={(e) => setFormData({ ...formData, total_points: parseInt(e.target.value) || 100 })}
+                  placeholder="Total points for course grade"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used to calculate student progress based on assignment scores
+                </p>
               </div>
             </div>
           </CardContent>
