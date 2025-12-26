@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   BookOpen,
   GraduationCap,
@@ -15,7 +16,6 @@ import {
   Menu,
   Home,
   Users,
-  FileText,
   PlusCircle,
   ChevronRight,
   ClipboardList,
@@ -23,8 +23,11 @@ import {
   Bell,
   MessageSquare,
   Megaphone,
+  Lock,
+  AlertCircle,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useEnrollmentCheck } from "@/hooks/useEnrollmentCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import logo from "@/assets/logo.png";
@@ -33,6 +36,7 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
+  requiresEnrollment?: boolean;
 }
 
 interface DashboardLayoutProps {
@@ -41,15 +45,15 @@ interface DashboardLayoutProps {
 }
 
 const studentNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/student", icon: Home },
-  { title: "My Courses", href: "/student/courses", icon: BookOpen },
-  { title: "Assignments", href: "/student/assignments", icon: ClipboardList },
-  { title: "Resources", href: "/student/resources", icon: FolderOpen },
-  { title: "Announcements", href: "/student/announcements", icon: Bell },
-  { title: "Complaints", href: "/student/complaints", icon: MessageSquare },
-  { title: "Certificates", href: "/student/certificates", icon: Award },
-  { title: "Learning Paths", href: "/student/paths", icon: GraduationCap },
-  { title: "Settings", href: "/student/settings", icon: Settings },
+  { title: "Dashboard", href: "/student", icon: Home, requiresEnrollment: false },
+  { title: "My Courses", href: "/student/courses", icon: BookOpen, requiresEnrollment: false },
+  { title: "Assignments", href: "/student/assignments", icon: ClipboardList, requiresEnrollment: true },
+  { title: "Resources", href: "/student/resources", icon: FolderOpen, requiresEnrollment: true },
+  { title: "Announcements", href: "/student/announcements", icon: Bell, requiresEnrollment: true },
+  { title: "Complaints", href: "/student/complaints", icon: MessageSquare, requiresEnrollment: true },
+  { title: "Certificates", href: "/student/certificates", icon: Award, requiresEnrollment: true },
+  { title: "Learning Paths", href: "/student/paths", icon: GraduationCap, requiresEnrollment: true },
+  { title: "Settings", href: "/student/settings", icon: Settings, requiresEnrollment: false },
 ];
 
 const instructorNavItems: NavItem[] = [
@@ -68,10 +72,19 @@ export function DashboardLayout({ children, type }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useUserRole();
+  const { isEnrolled, isLoading: enrollmentLoading } = useEnrollmentCheck();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = type === "student" ? studentNavItems : instructorNavItems;
+  const baseNavItems = type === "student" ? studentNavItems : instructorNavItems;
   const dashboardTitle = type === "student" ? "Student Dashboard" : "Instructor Dashboard";
+
+  // Filter nav items based on enrollment status for students
+  const navItems = type === "student" 
+    ? baseNavItems.map(item => ({
+        ...item,
+        isLocked: item.requiresEnrollment && !isEnrolled,
+      }))
+    : baseNavItems.map(item => ({ ...item, isLocked: false }));
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -104,10 +117,38 @@ export function DashboardLayout({ children, type }: DashboardLayoutProps) {
         </Link>
       </div>
 
+      {/* Enrollment Warning for Students */}
+      {type === "student" && !enrollmentLoading && !isEnrolled && (
+        <div className="px-4 pt-4">
+          <Alert className="bg-amber-500/10 border-amber-500/20">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-xs text-amber-500">
+              Enroll in a course to unlock all features
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       <ScrollArea className="flex-1 px-4 py-6">
         <nav className="space-y-2">
           {navItems.map((item) => {
             const isActive = location.pathname === item.href;
+            const isLocked = 'isLocked' in item && item.isLocked;
+
+            if (isLocked) {
+              return (
+                <div
+                  key={item.href}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
+                  title="Enroll in a course to access this feature"
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="flex-1">{item.title}</span>
+                  <Lock className="h-4 w-4" />
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
