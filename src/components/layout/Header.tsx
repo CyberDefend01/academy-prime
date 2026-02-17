@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Shield, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -102,7 +103,8 @@ export function Header() {
           ))}
         </div>
 
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-3">
+          <ThemeToggle />
           {isAdmin && (
             <Button variant="ghost" size="sm" className="hover:text-cyan transition-colors" asChild>
               <Link to="/admin"><LayoutDashboard className="w-4 h-4 mr-2" />Admin</Link>
@@ -194,6 +196,10 @@ export function Header() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
                 <Button variant="outline" className="w-full hover:border-cyan/50" asChild>
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
                 </Button>

@@ -27,6 +27,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useEnrollmentCheck } from "@/hooks/useEnrollmentCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -173,6 +174,10 @@ export function DashboardLayout({ children, type }: DashboardLayoutProps) {
       </ScrollArea>
 
       <div className="p-4 border-t border-border space-y-2">
+        <div className="flex items-center justify-between px-3 py-1">
+          <span className="text-xs text-muted-foreground">Theme</span>
+          <ThemeToggle />
+        </div>
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={profile?.avatar_url || undefined} />
