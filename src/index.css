@@ -137,47 +137,92 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-primary via-cyan to-accent bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent;
+  }
+
+  .dark .text-gradient {
+    @apply from-primary via-cyan to-accent;
   }
 
   .bg-gradient-hero {
-    background: linear-gradient(135deg, hsl(var(--navy)) 0%, hsl(var(--navy-light)) 50%, hsl(var(--navy)) 100%);
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--secondary)) 50%, hsl(var(--background)) 100%);
   }
 
   .bg-gradient-card {
-    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--navy)) 100%);
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
   }
 
   .glow-primary {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.15);
+  }
+
+  .dark .glow-primary {
     box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
   }
 
   .glow-accent {
+    box-shadow: 0 0 40px hsl(var(--accent) / 0.15);
+  }
+
+  .dark .glow-accent {
     box-shadow: 0 0 40px hsl(var(--accent) / 0.3);
   }
 
   .glow-cyan {
+    box-shadow: 0 0 60px hsl(var(--cyan) / 0.2);
+  }
+
+  .dark .glow-cyan {
     box-shadow: 0 0 60px hsl(var(--cyan) / 0.4);
   }
 
   .cyber-grid {
     background-image: 
+      linear-gradient(hsl(var(--primary) / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary) / 0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .dark .cyber-grid {
+    background-image: 
       linear-gradient(hsl(var(--cyan) / 0.03) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--cyan) / 0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
   }
 
   .cyber-scanline {
     background: linear-gradient(
       0deg,
       transparent 0%,
-      hsl(var(--cyan) / 0.05) 50%,
+      hsl(var(--primary) / 0.04) 50%,
       transparent 100%
     );
     animation: grid-flow 8s linear infinite;
   }
 
+  .dark .cyber-scanline {
+    background: linear-gradient(
+      0deg,
+      transparent 0%,
+      hsl(var(--cyan) / 0.05) 50%,
+      transparent 100%
+    );
+  }
+
   .text-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--primary)) 100%
+    );
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+
+  .dark .text-shimmer {
     background: linear-gradient(
       90deg,
       hsl(var(--primary)) 0%,
@@ -190,13 +235,19 @@
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: shimmer 3s linear infinite;
   }
 
   .glass-card {
-    background: hsl(var(--card) / 0.6);
+    background: hsl(var(--card) / 0.85);
     backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 24px hsl(var(--foreground) / 0.04);
+  }
+
+  .dark .glass-card {
+    background: hsl(var(--card) / 0.6);
     border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: none;
   }
 
   .gradient-border {
@@ -209,12 +260,16 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, hsl(var(--cyan) / 0.5), hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.5));
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+  }
+
+  .dark .gradient-border::before {
+    background: linear-gradient(135deg, hsl(var(--cyan) / 0.5), hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.5));
   }
 }
 
