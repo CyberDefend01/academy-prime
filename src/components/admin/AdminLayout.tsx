@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -103,6 +104,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
+          <div className="flex items-center justify-between px-3 py-1">
+            <span className="text-xs text-muted-foreground">Theme</span>
+            <ThemeToggle />
+          </div>
           <Link to="/">
             <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
               <ChevronLeft className="w-5 h-5" />
