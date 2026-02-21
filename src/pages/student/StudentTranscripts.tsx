@@ -71,6 +71,28 @@ export default function StudentTranscripts() {
   });
 
   const hasPendingRequest = requests?.some((r) => r.status === "pending");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateTranscript = async (requestId: string) => {
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-transcript", {
+        body: { request_id: requestId },
+      });
+      if (error) throw error;
+      if (data?.html) {
+        const win = window.open("", "_blank");
+        if (win) {
+          win.document.write(data.html);
+          win.document.close();
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate transcript");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -185,16 +207,30 @@ export default function StudentTranscripts() {
                         )}
                       </div>
                     </div>
-                    {request.status === "approved" && request.transcript_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(request.transcript_url!)}
-                        className="gap-2 shrink-0"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
+                    {request.status === "approved" && (
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateTranscript(request.id)}
+                          disabled={isGenerating}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          {isGenerating ? "Generating..." : "View & Print"}
+                        </Button>
+                        {request.transcript_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownload(request.transcript_url!)}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardContent>
