@@ -48,7 +48,7 @@ const navItems = [
   { icon: CreditCard, label: "Payment Settings", path: "/admin/payment-settings" },
   { icon: Ticket, label: "Coupons", path: "/admin/coupons" },
   { icon: CreditCard, label: "ID Cards", path: "/admin/id-cards" },
-  { icon: Wrench, label: "Settings", path: "/admin/settings" },
+  { icon: Wrench, label: "Settings", path: "/admin/platform-settings" },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
