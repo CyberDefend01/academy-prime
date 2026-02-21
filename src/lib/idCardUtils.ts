@@ -63,19 +63,19 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f1f5f9;-webkit-print
 .no-print button{padding:10px 24px;font-size:13px;font-weight:600;border:none;border-radius:8px;cursor:pointer;}
 .btn-print{background:#1a365d;color:#fff;}.btn-close{background:#e2e8f0;color:#0f172a;}
 
-.id-card{width:420px;height:260px;border-radius:16px;overflow:hidden;position:relative;background:#fff;box-shadow:0 20px 40px rgba(0,0,0,0.15);}
-.id-card-back{width:420px;height:260px;border-radius:16px;overflow:hidden;position:relative;background:#fff;box-shadow:0 20px 40px rgba(0,0,0,0.15);}
+.id-card{width:420px;height:270px;border-radius:16px;overflow:hidden;position:relative;background:#fff;box-shadow:0 20px 40px rgba(0,0,0,0.15);}
+.id-card-back{width:420px;height:270px;border-radius:16px;overflow:hidden;position:relative;background:#fff;box-shadow:0 20px 40px rgba(0,0,0,0.15);}
 
 /* Watermark */
-.logo-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:160px;height:160px;opacity:0.08;pointer-events:none;z-index:0;border-radius:50%;}
+.logo-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;opacity:0.06;pointer-events:none;z-index:0;border-radius:50%;}
 
 /* Front */
 .card-header{background:linear-gradient(135deg,#0c1929 0%,#1e3a5f 60%,#0c4a6e 100%);padding:14px 20px;display:flex;align-items:center;gap:12px;}
-.card-header img{width:40px;height:40px;object-fit:cover;border-radius:50%;}
+.card-header img{width:50px;height:50px;object-fit:contain;border-radius:50%;background:#fff;padding:2px;}
 .card-header-text{color:#fff;}
 .card-header-text h2{font-size:13px;font-weight:800;letter-spacing:0.5px;}
 .card-header-text p{font-size:8px;opacity:0.7;letter-spacing:1.5px;text-transform:uppercase;}
-.card-body{display:flex;padding:16px 20px;gap:16px;height:calc(100% - 68px);position:relative;z-index:1;}
+.card-body{display:flex;padding:16px 20px;gap:16px;height:calc(100% - 78px);position:relative;z-index:1;}
 .avatar-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
 .avatar{width:80px;height:80px;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#06b6d4);display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #c9a84c;}
 .avatar img{width:100%;height:100%;object-fit:cover;}
@@ -95,11 +95,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f1f5f9;-webkit-print
 .back-header{background:linear-gradient(135deg,#0c1929,#1e3a5f);padding:10px 16px;text-align:center;color:#fff;}
 .back-header h3{font-size:10px;font-weight:800;letter-spacing:1px;}
 .back-header p{font-size:8px;opacity:0.7;margin-top:2px;}
-.back-body{padding:8px 16px;text-align:center;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;height:calc(100% - 44px);overflow:hidden;}
-.barcode{font-family:monospace;font-size:11px;letter-spacing:3px;color:#0f172a;margin:4px 0;padding:4px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;}
-.qr-back{margin:4px auto;display:flex;justify-content:center;}
-.terms{font-size:7px;color:#94a3b8;line-height:1.4;margin-top:4px;text-align:left;list-style:none;padding:0;}
+.back-body{padding:6px 14px;text-align:center;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;height:calc(100% - 44px);overflow:hidden;justify-content:space-between;}
+.back-top{display:flex;flex-direction:column;align-items:center;}
+.barcode{font-family:monospace;font-size:11px;letter-spacing:3px;color:#0f172a;margin:3px 0;padding:3px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;}
+.qr-back{margin:2px auto;display:flex;justify-content:center;}
+.terms{font-size:6.5px;color:#64748b;line-height:1.35;margin-top:2px;text-align:left;list-style:none;padding:0 4px;}
 .terms li{margin-bottom:1px;}
+.back-footer{font-size:6px;color:#94a3b8;text-align:center;padding-top:2px;border-top:1px solid #e2e8f0;width:100%;}
 
 @media print{body{background:#fff;}.no-print{display:none!important;}.id-card,.id-card-back{box-shadow:none;page-break-after:always;}}
 </style>
@@ -164,15 +166,21 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f1f5f9;-webkit-print
     <p>Securing Africa's Digital Future</p>
   </div>
   <div class="back-body">
-     <div class="barcode">${card.studentId}</div>
-    <div class="qr-back">${generateQRCodeSVG(verifyUrl, 50)}</div>
-    <p style="font-size:7px;color:#64748b;margin:2px 0;">Scan to verify • ${verifyUrl}</p>
+    <div class="back-top">
+      <div class="barcode">${card.studentId}</div>
+      <div class="qr-back">${generateQRCodeSVG(verifyUrl, 45)}</div>
+      <p style="font-size:6.5px;color:#64748b;margin:1px 0;">Scan to verify • ${verifyUrl}</p>
+    </div>
     <ul class="terms">
-      <li>• Property of CDAA – must be returned upon request.</li>
-      <li>• Non-transferable – present for identification.</li>
-      <li>• Report lost/stolen cards to the academy office.</li>
-      <li>• Valid only for the duration on the front.</li>
+      <li>• This card is the property of Cyber Defend Academy Africa (CDAA) and must be returned upon request.</li>
+      <li>• This card is non-transferable and must be presented for identification purposes when required.</li>
+      <li>• Loss or theft of this card should be reported immediately to the academy administration office.</li>
+      <li>• This card is valid only for the period indicated on the front side.</li>
+      <li>• Misuse or alteration of this card is strictly prohibited and may result in disciplinary action.</li>
     </ul>
+    <div class="back-footer">
+      <p>📧 info@cyberdefendafrica.com &nbsp;|&nbsp; 🌐 www.cyberdefendafrica.com</p>
+    </div>
   </div>
   <div class="card-strip"></div>
 </div>

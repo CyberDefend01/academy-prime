@@ -187,7 +187,7 @@ function PreviewContent({ card, onPrint }: { card: IDCardData; onPrint: (c: IDCa
       </div>
       <div
         className="mx-auto overflow-hidden rounded-2xl shadow-xl"
-        style={{ width: 420, height: 560, transform: "scale(0.9)", transformOrigin: "top center" }}
+        style={{ width: 420, height: 580, transform: "scale(0.9)", transformOrigin: "top center" }}
       >
         <iframe
           srcDoc={html}
