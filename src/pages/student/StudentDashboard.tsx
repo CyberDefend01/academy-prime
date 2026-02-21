@@ -17,11 +17,73 @@ import {
   Trophy,
   Target,
   FileText,
+  Bell,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { CourseProgressCard } from "@/components/dashboard/CourseProgressCard";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
+
+function RecentNotifications({ userId }: { userId?: string }) {
+  const { data: notifications, isLoading } = useQuery({
+    queryKey: ["recent-notifications", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = notifications?.filter((n) => !n.is_read).length || 0;
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+  if (!notifications?.length) return null;
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5 text-primary" />
+          Recent Notifications
+          {unreadCount > 0 && (
+            <Badge variant="secondary" className="ml-1">{unreadCount} new</Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {notifications.map((notif) => (
+            <div
+              key={notif.id}
+              className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+                !notif.is_read ? "bg-primary/5 border border-primary/10" : "bg-secondary/50"
+              }`}
+            >
+              <Bell className={`h-4 w-4 mt-0.5 shrink-0 ${
+                notif.type === "success" ? "text-emerald-500" :
+                notif.type === "warning" ? "text-amber-500" :
+                "text-primary"
+              }`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{notif.title}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1">{notif.message}</p>
+              </div>
+              {!notif.is_read && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function StudentDashboard() {
   const { user } = useUserRole();
@@ -285,6 +347,9 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Recent Notifications */}
+        <RecentNotifications userId={user?.id} />
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Continue Learning */}

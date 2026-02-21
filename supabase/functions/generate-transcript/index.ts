@@ -17,7 +17,6 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify the caller is admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -31,18 +30,6 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin role
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
-      _role: "admin",
-    });
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -69,6 +56,15 @@ serve(async (req) => {
       });
     }
 
+    // Allow access if admin or the student themselves
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    if (!isAdmin && user.id !== request.student_id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get student profile
     const { data: profile } = await supabase
       .from("profiles")
@@ -76,7 +72,10 @@ serve(async (req) => {
       .eq("user_id", request.student_id)
       .single();
 
-    // Get student enrollments with course details
+    // Get student email from auth
+    const { data: { user: studentUser } } = await supabase.auth.admin.getUserById(request.student_id);
+
+    // Get enrollments with courses
     const { data: enrollments } = await supabase
       .from("enrollments")
       .select(`*, course:courses(*)`)
@@ -96,24 +95,29 @@ serve(async (req) => {
       .eq("user_id", request.student_id)
       .is("revoked_at", null);
 
-    // Build transcript data
-    const studentName = profile?.full_name || "Student";
-    const transcriptId = `TX-${request.id.slice(0, 12).toUpperCase()}`;
-    const issueDate = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    // Get academy settings
+    const { data: settings } = await supabase
+      .from("platform_settings")
+      .select("key, value");
 
-    // Calculate overall stats
+    const academyName = settings?.find((s: any) => s.key === "academy_name")?.value || "International Cybersecurity and Digital Forensics Academy";
+    const academyShort = settings?.find((s: any) => s.key === "academy_short")?.value || "ICDFA";
+
+    const studentName = profile?.full_name || "Student";
+    const studentEmail = studentUser?.email || "N/A";
+    const transcriptId = `TX-${new Date().getFullYear()}-${request.id.slice(0, 8).toUpperCase()}`;
+    const issueDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const enrollmentDate = profile?.created_at
+      ? new Date(profile.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "N/A";
+
     const totalCourses = enrollments?.length || 0;
     const completedCourses = enrollments?.filter((e: any) => e.completed_at).length || 0;
     const avgProgress = totalCourses > 0
       ? Math.round((enrollments || []).reduce((sum: number, e: any) => sum + (e.progress || 0), 0) / totalCourses)
       : 0;
 
-    // Build course results
-    const courseResults = (enrollments || []).map((enrollment: any) => {
+    const courseResults = (enrollments || []).map((enrollment: any, idx: number) => {
       const course = enrollment.course;
       const courseQuizzes = (quizAttempts || []).filter(
         (qa: any) => qa.quiz?.course_id === course?.id
@@ -122,27 +126,61 @@ serve(async (req) => {
         ? Math.max(...courseQuizzes.map((qa: any) => qa.score || 0))
         : null;
 
-      let level = "Beginner";
+      let skillLevel = "Beginner";
+      let skillPoints = 1;
       if (bestScore !== null) {
-        if (bestScore >= 85) level = "Expert";
-        else if (bestScore >= 75) level = "Advanced";
-        else if (bestScore >= 60) level = "Intermediate";
+        if (bestScore >= 90) { skillLevel = "Expert"; skillPoints = 5; }
+        else if (bestScore >= 80) { skillLevel = "Advanced"; skillPoints = 4; }
+        else if (bestScore >= 70) { skillLevel = "Proficient"; skillPoints = 3; }
+        else if (bestScore >= 60) { skillLevel = "Intermediate"; skillPoints = 2; }
       }
 
+      const hasCert = certificates?.some((c: any) => c.course_id === course?.id);
+
       return {
-        code: course?.slug?.toUpperCase().slice(0, 6) || "N/A",
+        sn: idx + 1,
+        code: `CS-${(course?.slug || "000").slice(0, 4).toUpperCase()}`,
         title: course?.title || "Unknown Course",
         level: course?.level || "beginner",
-        score: bestScore !== null ? `${Math.round(bestScore)}%` : "N/A",
-        skillLevel: level,
+        score: bestScore !== null ? Math.round(bestScore) : null,
+        skillLevel,
+        skillPoints,
         progress: enrollment.progress || 0,
         completed: !!enrollment.completed_at,
+        completedAt: enrollment.completed_at,
+        hasCert,
+        duration: course?.duration || "N/A",
+        category: course?.category || "N/A",
       };
     });
 
-    // Build HTML transcript matching the sample design
+    // Calculate SPA (Skill Point Average)
+    const totalSkillPoints = courseResults.reduce((sum: number, c: any) => sum + c.skillPoints, 0);
+    const spa = totalCourses > 0 ? (totalSkillPoints / totalCourses).toFixed(2) : "0.00";
+
+    let grade = "C";
+    let gradeLabel = "Pass";
+    const spaNum = parseFloat(spa);
+    if (spaNum >= 4.5) { grade = "A+"; gradeLabel = "First Class with Distinction"; }
+    else if (spaNum >= 4.0) { grade = "A"; gradeLabel = "First Class"; }
+    else if (spaNum >= 3.5) { grade = "B+"; gradeLabel = "Second Division (Upper)"; }
+    else if (spaNum >= 3.0) { grade = "B"; gradeLabel = "Second Division (Lower)"; }
+    else if (spaNum >= 2.5) { grade = "C+"; gradeLabel = "Third Division"; }
+    else if (spaNum >= 2.0) { grade = "C"; gradeLabel = "Pass"; }
+
+    const recommendation = spaNum >= 3.5
+      ? "Proficient. Suitable for certification and immediate workplace integration."
+      : spaNum >= 2.5
+      ? "Competent. Recommended for further training to strengthen key skills."
+      : "Developing. Additional coursework recommended before certification.";
+
     const html = generateTranscriptHTML({
+      academyName: typeof academyName === "string" ? academyName : "International Cybersecurity and Digital Forensics Academy",
+      academyShort: typeof academyShort === "string" ? academyShort : "ICDFA",
       studentName,
+      studentEmail,
+      country: profile?.country || "N/A",
+      enrollmentDate,
       transcriptId,
       issueDate,
       totalCourses,
@@ -151,19 +189,15 @@ serve(async (req) => {
       courseResults,
       certificates: certificates || [],
       profileAvatar: profile?.avatar_url,
-      country: profile?.country,
+      spa,
+      grade,
+      gradeLabel,
+      recommendation,
     });
 
-    // Return the HTML for the admin to print/save as PDF
-    return new Response(JSON.stringify({ 
-      success: true, 
-      html,
-      transcript_id: transcriptId,
-      student_name: studentName,
-    }), {
+    return new Response(JSON.stringify({ success: true, html, transcript_id: transcriptId, student_name: studentName }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (error) {
     console.error("Error generating transcript:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
@@ -174,7 +208,12 @@ serve(async (req) => {
 });
 
 function generateTranscriptHTML(data: {
+  academyName: string;
+  academyShort: string;
   studentName: string;
+  studentEmail: string;
+  country: string;
+  enrollmentDate: string;
   transcriptId: string;
   issueDate: string;
   totalCourses: number;
@@ -183,213 +222,250 @@ function generateTranscriptHTML(data: {
   courseResults: any[];
   certificates: any[];
   profileAvatar?: string | null;
-  country?: string | null;
+  spa: string;
+  grade: string;
+  gradeLabel: string;
+  recommendation: string;
 }) {
-  const courseRows = data.courseResults
-    .map(
-      (c: any, i: number) => `
-    <tr style="border-bottom: 1px solid #e2e8f0;">
-      <td style="padding: 12px 16px; font-size: 14px; color: #64748b;">${i + 1}</td>
-      <td style="padding: 12px 16px;">
-        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">${c.title}</div>
+  const courseRows = data.courseResults.map((c: any) => `
+    <tr>
+      <td style="padding:10px 14px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;">${c.sn}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">
+        <div style="font-size:13px;font-weight:600;color:#0f172a;">${c.title}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${c.code} • ${c.category}</div>
       </td>
-      <td style="padding: 12px 16px;">
-        <span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: ${
-          c.skillLevel === "Expert"
-            ? "#dcfce7; color: #16a34a"
-            : c.skillLevel === "Advanced"
-            ? "#dbeafe; color: #2563eb"
-            : c.skillLevel === "Intermediate"
-            ? "#fef3c7; color: #d97706"
-            : "#fee2e2; color: #dc2626"
+      <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">
+        <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${
+          c.level === "advanced" ? "#fef2f2;color:#dc2626" :
+          c.level === "intermediate" ? "#fffbeb;color:#d97706" :
+          "#f0fdf4;color:#16a34a"
+        };">${c.level}</span>
+      </td>
+      <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">${c.score !== null ? c.score + "%" : "—"}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">
+        <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${
+          c.skillLevel === "Expert" ? "#dcfce7;color:#16a34a" :
+          c.skillLevel === "Advanced" ? "#dbeafe;color:#2563eb" :
+          c.skillLevel === "Proficient" ? "#e0f2fe;color:#0284c7" :
+          c.skillLevel === "Intermediate" ? "#fef3c7;color:#d97706" :
+          "#fee2e2;color:#dc2626"
         };">${c.skillLevel}</span>
       </td>
-      <td style="padding: 12px 16px; font-size: 14px; font-weight: 600; color: #1e293b;">${c.score}</td>
-      <td style="padding: 12px 16px; font-size: 14px; color: #64748b;">${c.completed ? "✅ Completed" : `${c.progress}%`}</td>
-    </tr>`
-    )
-    .join("");
+      <td style="padding:10px 14px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;text-align:center;">${c.skillPoints}</td>
+      <td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #e2e8f0;color:${c.completed ? "#16a34a" : "#d97706"};font-weight:600;">${c.completed ? "✓ Completed" : c.progress + "%"}</td>
+    </tr>`).join("");
 
-  // Calculate grade
-  const completionRate = data.totalCourses > 0 ? (data.completedCourses / data.totalCourses) * 100 : 0;
-  let grade = "C";
-  let gradeLabel = "Satisfactory";
-  if (data.avgProgress >= 90) { grade = "A"; gradeLabel = "First Division with Distinction"; }
-  else if (data.avgProgress >= 80) { grade = "B+"; gradeLabel = "Second Division with Merit"; }
-  else if (data.avgProgress >= 70) { grade = "B"; gradeLabel = "Second Division"; }
-  else if (data.avgProgress >= 60) { grade = "C+"; gradeLabel = "Third Division"; }
+  const certRows = data.certificates.length > 0 ? data.certificates.map((cert: any, i: number) => `
+    <tr>
+      <td style="padding:8px 14px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;">${i + 1}</td>
+      <td style="padding:8px 14px;font-size:13px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">${cert.course_name}</td>
+      <td style="padding:8px 14px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;">${cert.verification_id}</td>
+      <td style="padding:8px 14px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;">${new Date(cert.issued_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</td>
+    </tr>`).join("") : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#94a3b8;font-size:13px;">No certificates issued yet</td></tr>`;
+
+  // Key strengths based on results
+  const strengths: string[] = [];
+  const expertCount = data.courseResults.filter((c: any) => c.skillLevel === "Expert" || c.skillLevel === "Advanced").length;
+  if (expertCount > 0) strengths.push("Strong technical proficiency in specialized domains");
+  if (data.completedCourses > 0) strengths.push("Demonstrated commitment to course completion");
+  if (data.certificates.length > 0) strengths.push("Achieved certified competency levels");
+  if (data.avgProgress >= 70) strengths.push("Consistent skill application across training modules");
+  if (strengths.length === 0) strengths.push("Developing foundation in cybersecurity disciplines");
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Training Transcript - ${data.studentName}</title>
+<title>Training Transcript — ${data.studentName}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1e293b; }
-  .page { max-width: 900px; margin: 0 auto; padding: 0; }
-
-  .header { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); color: white; padding: 40px; display: flex; justify-content: space-between; align-items: center; }
-  .header-left h1 { font-size: 22px; font-weight: 800; line-height: 1.2; }
-  .header-left p { font-size: 12px; opacity: 0.8; margin-top: 8px; }
-  .header-right { text-align: right; }
-  .header-right h2 { font-size: 24px; font-weight: 800; letter-spacing: 1px; }
-  .header-right p { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-
-  .student-info { padding: 30px 40px; display: flex; gap: 30px; align-items: center; border-bottom: 3px solid #06b6d4; }
-  .avatar { width: 80px; height: 80px; border-radius: 50%; background: #e2e8f0; object-fit: cover; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 40px; flex: 1; }
-  .info-item label { font-size: 12px; font-weight: 700; color: #1e293b; }
-  .info-item span { font-size: 13px; color: #475569; margin-left: 8px; }
-
-  .section { padding: 30px 40px; }
-  .section-title { font-size: 18px; font-weight: 800; padding: 12px 20px; background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; border-radius: 8px; margin-bottom: 20px; }
-
-  .skills-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
-  .skill-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
-  .skill-card .label { font-size: 11px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.5px; }
-  .skill-card .value { font-size: 32px; font-weight: 800; color: #1e293b; margin: 8px 0; }
-  .skill-card .desc { font-size: 11px; color: #64748b; }
-  .skill-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 8px; }
-  .skill-bar-fill { height: 4px; background: #06b6d4; border-radius: 2px; }
-
-  table { width: 100%; border-collapse: collapse; }
-  thead th { background: #1e293b; color: white; padding: 12px 16px; font-size: 12px; text-align: left; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-
-  .performance { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px; }
-  .perf-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
-  .perf-card .perf-label { font-size: 11px; font-weight: 700; color: white; background: #1e3a5f; padding: 8px; border-radius: 8px 8px 0 0; margin: -20px -20px 16px -20px; text-transform: uppercase; }
-  .perf-card .perf-value { font-size: 36px; font-weight: 800; color: #1e293b; }
-  .perf-card .perf-desc { font-size: 11px; color: #64748b; margin-top: 4px; }
-
-  .grade-badge { display: inline-block; padding: 4px 16px; background: #2563eb; color: white; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 8px; }
-
-  .footer { padding: 30px 40px; border-top: 2px dashed #e2e8f0; display: flex; justify-content: space-around; text-align: center; }
-  .footer .sig { }
-  .footer .sig .line { width: 180px; border-top: 1px solid #1e293b; margin: 8px auto; }
-  .footer .sig .name { font-size: 13px; font-weight: 700; }
-  .footer .sig .role { font-size: 11px; color: #64748b; }
-
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .page { max-width: 100%; } }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:920px;margin:0 auto;padding:0;}
+  @media print{.page{max-width:100%;}}
 </style>
 </head>
 <body>
 <div class="page">
-  <div class="header">
-    <div class="header-left">
-      <h1>INTERNATIONAL<br>CYBERSECURITY AND<br>DIGITAL FORENSICS<br>ACADEMY</h1>
-      <p>DIRECTORATE OF STUDENTS EVALUATION DIVISION</p>
-    </div>
-    <div class="header-right">
-      <h2>TRAINING TRANSCRIPT</h2>
-      <p>Issued: ${data.issueDate}</p>
-      <p>Transcript ID: ${data.transcriptId}</p>
-    </div>
-  </div>
 
-  <div class="student-info">
-    ${data.profileAvatar ? `<img src="${data.profileAvatar}" class="avatar" alt="Student" />` : `<div class="avatar"></div>`}
-    <div class="info-grid">
-      <div class="info-item"><label>Full Name:</label><span>${data.studentName}</span></div>
-      <div class="info-item"><label>Department:</label><span>Cyber Security</span></div>
-      <div class="info-item"><label>Program:</label><span>Cybersecurity Training</span></div>
-      <div class="info-item"><label>Country:</label><span>${data.country || "N/A"}</span></div>
-      <div class="info-item"><label>Total Courses:</label><span>${data.totalCourses}</span></div>
-      <div class="info-item"><label>Certificates:</label><span>${data.certificates.length}</span></div>
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#0c1929 0%,#1e3a5f 50%,#0c4a6e 100%);color:#fff;padding:36px 44px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#06b6d4,#3b82f6);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:20px;font-weight:800;color:#fff;">🛡️</span>
+        </div>
+        <div>
+          <h1 style="font-size:18px;font-weight:800;letter-spacing:0.5px;line-height:1.3;">${data.academyName.toUpperCase()}</h1>
+          <p style="font-size:11px;opacity:0.7;letter-spacing:1px;margin-top:2px;">DIRECTORATE OF STUDENTS EVALUATION DIVISION</p>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">SKILLS SUMMARY</div>
-    <div class="skills-grid">
-      <div class="skill-card">
-        <div class="label">Average Progress</div>
-        <div class="value">${data.avgProgress}%</div>
-        <div class="desc">Overall skill proficiency</div>
-        <div class="skill-bar"><div class="skill-bar-fill" style="width: ${data.avgProgress}%"></div></div>
-      </div>
-      <div class="skill-card">
-        <div class="label">Completion Rate</div>
-        <div class="value">${Math.round((data.completedCourses / Math.max(data.totalCourses, 1)) * 100)}%</div>
-        <div class="desc">Courses completed</div>
-        <div class="skill-bar"><div class="skill-bar-fill" style="width: ${Math.round((data.completedCourses / Math.max(data.totalCourses, 1)) * 100)}%"></div></div>
-      </div>
-      <div class="skill-card">
-        <div class="label">Courses Completed</div>
-        <div class="value">${data.completedCourses}/${data.totalCourses}</div>
-        <div class="desc">Courses successfully completed</div>
-        <div class="skill-bar"><div class="skill-bar-fill" style="width: ${Math.round((data.completedCourses / Math.max(data.totalCourses, 1)) * 100)}%"></div></div>
-      </div>
-      <div class="skill-card">
-        <div class="label">Certificates</div>
-        <div class="value">${data.certificates.length}</div>
-        <div class="desc">Certificates earned</div>
-        <div class="skill-bar"><div class="skill-bar-fill" style="width: ${Math.min(data.certificates.length * 25, 100)}%"></div></div>
+    <div style="text-align:right;">
+      <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px 24px;">
+        <h2 style="font-size:20px;font-weight:800;letter-spacing:1.5px;">OFFICIAL TRANSCRIPT</h2>
+        <p style="font-size:11px;opacity:0.7;margin-top:6px;">ID: ${data.transcriptId}</p>
+        <p style="font-size:11px;opacity:0.7;">Issued: ${data.issueDate}</p>
       </div>
     </div>
   </div>
 
-  <div class="section" style="padding-top: 0;">
-    <div class="section-title">SKILLS BREAKDOWN</div>
-    <table>
+  <!-- STUDENT INFO -->
+  <div style="padding:28px 44px;display:flex;gap:28px;align-items:center;border-bottom:3px solid #06b6d4;background:#f8fafc;">
+    <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#1e3a5f,#06b6d4);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #06b6d4;flex-shrink:0;">
+      ${data.profileAvatar
+        ? `<img src="${data.profileAvatar}" style="width:100%;height:100%;object-fit:cover;" />`
+        : `<span style="font-size:28px;font-weight:800;color:#fff;">${data.studentName.charAt(0)}</span>`
+      }
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 36px;flex:1;">
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Full Name</span><p style="font-size:14px;font-weight:700;color:#0f172a;">${data.studentName}</p></div>
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Email</span><p style="font-size:13px;color:#475569;">${data.studentEmail}</p></div>
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Country</span><p style="font-size:13px;color:#475569;">${data.country}</p></div>
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Department</span><p style="font-size:13px;color:#475569;">Cybersecurity & Digital Forensics</p></div>
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Enrollment Date</span><p style="font-size:13px;color:#475569;">${data.enrollmentDate}</p></div>
+      <div><span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Certificates Earned</span><p style="font-size:13px;color:#475569;">${data.certificates.length}</p></div>
+    </div>
+  </div>
+
+  <!-- EVALUATION SUMMARY -->
+  <div style="padding:28px 44px;">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:12px 20px;border-radius:8px;font-size:16px;font-weight:800;letter-spacing:0.5px;margin-bottom:20px;">
+      ASSESSORS TEAM EVALUATION
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:#0f172a;">Training Evaluation Summary</h3>
+      <p style="font-size:13px;color:#475569;line-height:1.8;">${data.recommendation}</p>
+      <h4 style="font-size:13px;font-weight:700;margin-top:16px;margin-bottom:8px;color:#0f172a;">Key Strengths:</h4>
+      <ul style="list-style:none;padding:0;">
+        ${strengths.map(s => `<li style="font-size:13px;color:#475569;padding:3px 0;">• ${s}</li>`).join("")}
+      </ul>
+    </div>
+  </div>
+
+  <!-- SKILLS SUMMARY -->
+  <div style="padding:0 44px 28px;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.5px;">Skill Point Average</div>
+        <div style="font-size:32px;font-weight:800;color:#0f172a;margin:6px 0;">${data.spa}</div>
+        <div style="font-size:11px;color:#94a3b8;">out of 5.00</div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.5px;">Courses Completed</div>
+        <div style="font-size:32px;font-weight:800;color:#0f172a;margin:6px 0;">${data.completedCourses}/${data.totalCourses}</div>
+        <div style="font-size:11px;color:#94a3b8;">units completed</div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.5px;">Training Grade</div>
+        <div style="font-size:32px;font-weight:800;color:#0f172a;margin:6px 0;">${data.grade}</div>
+        <div style="font-size:11px;color:#94a3b8;">${data.gradeLabel}</div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center;">
+        <div style="font-size:10px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.5px;">Average Progress</div>
+        <div style="font-size:32px;font-weight:800;color:#0f172a;margin:6px 0;">${data.avgProgress}%</div>
+        <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:6px;"><div style="height:4px;background:#06b6d4;border-radius:2px;width:${data.avgProgress}%;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COURSE BREAKDOWN TABLE -->
+  <div style="padding:0 44px 28px;">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:12px 20px;border-radius:8px;font-size:16px;font-weight:800;letter-spacing:0.5px;margin-bottom:16px;">
+      COURSE PERFORMANCE BREAKDOWN
+    </div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Course Title</th>
-          <th>Level</th>
-          <th>Score</th>
-          <th>Status</th>
+        <tr style="background:#0f172a;">
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">#</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">COURSE</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">LEVEL</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">SCORE</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">SKILL</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:center;font-weight:700;letter-spacing:0.5px;">SP</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;letter-spacing:0.5px;">STATUS</th>
         </tr>
       </thead>
       <tbody>
-        ${courseRows || '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748b;">No courses enrolled</td></tr>'}
+        ${courseRows || '<tr><td colspan="7" style="padding:24px;text-align:center;color:#94a3b8;font-size:13px;">No courses enrolled</td></tr>'}
       </tbody>
     </table>
   </div>
 
-  <div class="section" style="padding-top: 0;">
-    <div class="section-title">OVERALL PERFORMANCE</div>
-    <div class="performance">
-      <div class="perf-card">
-        <div class="perf-label">Average Score</div>
-        <div class="perf-value">${data.avgProgress}%</div>
-        <div class="perf-desc">Cumulative Average</div>
-      </div>
-      <div class="perf-card">
-        <div class="perf-label">Units Summary</div>
-        <div style="text-align: left; padding: 0 10px; font-size: 13px; color: #475569;">
-          <p>Total Courses: <strong>${data.totalCourses}</strong></p>
-          <p>Completed: <strong>${data.completedCourses}</strong></p>
-          <p>In Progress: <strong>${data.totalCourses - data.completedCourses}</strong></p>
+  <!-- CERTIFICATES -->
+  <div style="padding:0 44px 28px;">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:12px 20px;border-radius:8px;font-size:16px;font-weight:800;letter-spacing:0.5px;margin-bottom:16px;">
+      CERTIFICATES ISSUED
+    </div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background:#0f172a;">
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;">#</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;">COURSE</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;">VERIFICATION ID</th>
+          <th style="padding:10px 14px;font-size:11px;color:#fff;text-align:left;font-weight:700;">ISSUED DATE</th>
+        </tr>
+      </thead>
+      <tbody>${certRows}</tbody>
+    </table>
+  </div>
+
+  <!-- OVERALL PERFORMANCE -->
+  <div style="padding:0 44px 28px;">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:12px 20px;border-radius:8px;font-size:16px;font-weight:800;letter-spacing:0.5px;margin-bottom:16px;">
+      OVERALL PERFORMANCE
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;text-align:center;">
+        <div style="background:#0f172a;color:#fff;padding:10px;font-size:11px;font-weight:700;letter-spacing:0.5px;">SKILL POINT AVERAGE (SPA)</div>
+        <div style="padding:20px;">
+          <div style="font-size:40px;font-weight:800;color:#0f172a;">${data.spa}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Cumulative Average</div>
         </div>
       </div>
-      <div class="perf-card">
-        <div class="perf-label">Training Grade</div>
-        <div class="perf-value">${grade}</div>
-        <div class="perf-desc">Overall Training Grade</div>
-        <span class="grade-badge">${gradeLabel}</span>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+        <div style="background:#0f172a;color:#fff;padding:10px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-align:center;">SKILL UNITS SUMMARY</div>
+        <div style="padding:16px 20px;font-size:13px;color:#475569;line-height:2;">
+          <div>Total Skill Units: <strong style="color:#0f172a;">${data.totalCourses}</strong></div>
+          <div>Units Completed: <strong style="color:#0f172a;">${data.completedCourses}</strong></div>
+          <div>In Progress: <strong style="color:#0f172a;">${data.totalCourses - data.completedCourses}</strong></div>
+        </div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;text-align:center;">
+        <div style="background:#0f172a;color:#fff;padding:10px;font-size:11px;font-weight:700;letter-spacing:0.5px;">TRAINING GRADE</div>
+        <div style="padding:20px;">
+          <div style="font-size:40px;font-weight:800;color:#0f172a;">${data.grade}</div>
+          <div style="display:inline-block;padding:4px 14px;background:#2563eb;color:#fff;border-radius:20px;font-size:11px;font-weight:700;margin-top:8px;">${data.gradeLabel}</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="footer">
-    <div class="sig">
-      <div class="line"></div>
-      <div class="name">Registrar</div>
-      <div class="role">Academic Records</div>
+  <!-- FOOTER / SIGNATURES -->
+  <div style="padding:28px 44px;border-top:2px dashed #cbd5e1;display:flex;justify-content:space-around;align-items:flex-end;text-align:center;">
+    <div>
+      <div style="width:160px;border-top:1px solid #0f172a;margin:0 auto 6px;"></div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">Registrar</div>
+      <div style="font-size:11px;color:#64748b;">Academic Records</div>
     </div>
-    <div class="sig">
-      <div class="line"></div>
-      <div class="name">Director of Evaluation</div>
-      <div class="role">Assessment Division</div>
+    <div>
+      <div style="width:160px;border-top:1px solid #0f172a;margin:0 auto 6px;"></div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">Director of Evaluation</div>
+      <div style="font-size:11px;color:#64748b;">Assessment Division</div>
     </div>
-    <div class="sig" style="text-align: center;">
-      <p style="font-size: 12px; font-weight: 700;">Date Issued</p>
-      <p style="font-size: 13px; color: #475569;">${data.issueDate}</p>
-      <p style="font-size: 11px; color: #64748b; margin-top: 4px;">Official Transcript</p>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:#0f172a;">Date Issued</p>
+      <p style="font-size:13px;color:#475569;">${data.issueDate}</p>
+      <p style="font-size:10px;color:#94a3b8;margin-top:4px;">Official Transcript • ${data.academyShort}</p>
     </div>
   </div>
+
+  <!-- WATERMARK -->
+  <div style="text-align:center;padding:16px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+    <p style="font-size:10px;color:#94a3b8;">This is an official transcript generated by ${data.academyName}. Transcript ID: ${data.transcriptId}</p>
+    <p style="font-size:10px;color:#94a3b8;">Verify authenticity at the academy's official portal. Unauthorized alteration of this document is prohibited.</p>
+  </div>
+
 </div>
 </body>
 </html>`;
