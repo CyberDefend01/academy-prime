@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Shield, Users, BookOpen, Award, CheckCircle, Star, ArrowRight, Clock, C
 import { featuredCourses } from "@/data/courses";
 import { testimonials } from "@/data/testimonials";
 import { categoryLabels, levelLabels } from "@/types";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 const features = [
@@ -39,20 +40,24 @@ const staggerContainer = {
 };
 
 export default function Index() {
+  const { scrollY } = useScroll();
+  const heroY = useTransform(scrollY, [0, 600], [0, 200]);
+  const heroScale = useTransform(scrollY, [0, 600], [1, 1.1]);
+
   return (
     <Layout>
       {/* Hero Section */}
       <section className="relative min-h-[95vh] flex items-center overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0">
+        {/* Background Image with Parallax */}
+        <motion.div className="absolute inset-0" style={{ y: heroY, scale: heroScale }}>
           <img 
             src="/images/hero-bg.jpeg" 
             alt="Cybersecurity training environment" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent" />
-        </div>
+        </motion.div>
+        <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent" />
         
         {/* Main content */}
         <div className="container-custom relative z-10 py-20">
