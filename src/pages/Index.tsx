@@ -3,12 +3,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, BookOpen, Award, CheckCircle, Star, ArrowRight, Play, Clock, ChevronRight, Zap, Target, GraduationCap } from "lucide-react";
+import { Shield, Users, BookOpen, Award, CheckCircle, Star, ArrowRight, Clock, ChevronRight, GraduationCap } from "lucide-react";
 import { featuredCourses } from "@/data/courses";
 import { testimonials } from "@/data/testimonials";
 import { categoryLabels, levelLabels } from "@/types";
 import { motion } from "framer-motion";
-import { CyberGrid } from "@/components/ui/CyberGrid";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 const features = [
@@ -44,32 +43,48 @@ export default function Index() {
     <Layout>
       {/* Hero Section */}
       <section className="relative min-h-[95vh] flex items-center overflow-hidden">
-        <CyberGrid />
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img 
+            src="/images/hero-bg.jpeg" 
+            alt="Cybersecurity training environment" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/30" />
+        </div>
         
         {/* Main content */}
         <div className="container-custom relative z-10 py-20">
           <motion.div 
-            className="max-w-4xl"
+            className="max-w-3xl"
             initial="initial"
             animate="animate"
             variants={staggerContainer}
           >
             <motion.div variants={fadeInUp}>
-              <Badge className="mb-6 bg-gradient-to-r from-cyan/20 to-primary/20 text-cyan border-cyan/30 hover:bg-cyan/30 transition-all duration-300 px-4 py-1.5">
+              <Badge className="mb-6 bg-primary/20 text-white border-primary/40 backdrop-blur-sm px-4 py-1.5">
                 <Shield className="w-3 h-3 mr-2" /> Africa's Premier Cybersecurity Academy
               </Badge>
             </motion.div>
             
             <motion.h1 
-              className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1]"
+              className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-4 leading-[1.1] drop-shadow-lg"
               variants={fadeInUp}
             >
               Securing Africa's{" "}
               <span className="text-shimmer">Digital Future</span>
             </motion.h1>
+
+            <motion.p 
+              className="text-lg sm:text-xl text-white/80 mb-4 italic drop-shadow"
+              variants={fadeInUp}
+            >
+              Train with the Best in the Industry
+            </motion.p>
             
             <motion.p 
-              className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed"
+              className="text-base text-white/70 mb-10 max-w-2xl leading-relaxed"
               variants={fadeInUp}
             >
               Master cybersecurity with practical, industry-relevant training designed for Africa's digital economy. 
@@ -79,70 +94,49 @@ export default function Index() {
             <motion.div className="flex flex-wrap gap-4" variants={fadeInUp}>
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-primary to-cyan hover:from-primary/90 hover:to-cyan/90 text-primary-foreground gap-2 shadow-lg shadow-cyan/20 transition-all duration-300 hover:shadow-cyan/40 hover:scale-105 px-8 h-14 text-base" 
+                className="bg-destructive hover:bg-destructive/90 text-white gap-2 shadow-lg transition-all duration-300 hover:scale-105 px-8 h-14 text-base font-bold" 
                 asChild
               >
                 <Link to="/courses">
-                  Explore Courses <ArrowRight className="w-5 h-5" />
+                  Get Started <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="gap-2 border-border hover:bg-secondary hover:border-cyan/50 transition-all duration-300 hover:scale-105 group px-8 h-14 text-base"
+                className="gap-2 border-white/40 text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 hover:scale-105 px-8 h-14 text-base font-bold"
+                asChild
               >
-                <Play className="w-5 h-5 group-hover:text-cyan transition-colors" /> Watch Demo
+                <Link to="/courses">View Courses</Link>
               </Button>
             </motion.div>
 
             <motion.div 
-              className="mt-16 grid grid-cols-3 gap-8 max-w-xl"
+              className="mt-14 flex flex-wrap gap-8"
               variants={fadeInUp}
             >
               {[
-                { icon: GraduationCap, label: "5,000+ Students", color: "text-lime" },
-                { icon: Target, label: "50+ Courses", color: "text-cyan" },
-                { icon: Zap, label: "15+ Countries", color: "text-accent" },
+                { icon: Shield, label: "Hands-On Training" },
+                { icon: Award, label: "Industry Certifications" },
+                { icon: GraduationCap, label: "Career Advancement" },
               ].map((item, index) => (
-                <motion.div 
-                  key={index}
-                  className="flex items-center gap-3 group"
-                  whileHover={{ x: 5 }}
-                >
-                  <div className={`p-2 rounded-lg bg-secondary/50 group-hover:bg-secondary transition-colors`}>
-                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                <div key={index} className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+                    <item.icon className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{item.label}</span>
-                </motion.div>
+                  <span className="text-sm font-semibold text-white drop-shadow">{item.label}</span>
+                </div>
               ))}
             </motion.div>
+
+            <motion.p
+              className="mt-12 text-lg font-bold text-white/90 drop-shadow-lg"
+              variants={fadeInUp}
+            >
+              Empowering the Next Generation of Cyber Defenders
+            </motion.p>
           </motion.div>
         </div>
-
-        {/* Floating shield graphic */}
-        <motion.div 
-          className="absolute right-10 top-1/2 -translate-y-1/2 hidden xl:block"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1, delay: 0.5 }}
-        >
-          <div className="relative">
-            <motion.div 
-              className="w-80 h-80 rounded-full bg-gradient-to-br from-primary/20 via-cyan/10 to-accent/20 blur-3xl"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 4, repeat: Infinity }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <motion.div 
-                className="w-48 h-48 rounded-2xl bg-gradient-to-br from-primary/30 to-cyan/30 flex items-center justify-center backdrop-blur-sm border border-cyan/20"
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 6, repeat: Infinity }}
-              >
-                <Shield className="w-24 h-24 text-cyan/80" />
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
       </section>
 
       {/* Features Section */}
