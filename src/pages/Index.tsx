@@ -18,8 +18,8 @@ const features = [
 ];
 
 const stats = [
-  { value: 5000, suffix: "+", label: "Students Trained" },
-  { value: 50, suffix: "+", label: "Expert Courses" },
+  { value: 100, suffix: "+", label: "Students Trained" },
+  { value: 15, suffix: "+", label: "Expert Courses" },
   { value: 15, suffix: "+", label: "African Countries" },
   { value: 95, suffix: "%", label: "Success Rate" },
 ];
@@ -73,7 +73,7 @@ export default function Index() {
               variants={fadeInUp}
             >
               Securing Africa's{" "}
-              <span className="text-shimmer">Digital Future</span>
+              <span className="text-cyan">Digital Future</span>
             </motion.h1>
 
             <motion.p 
@@ -204,7 +204,7 @@ export default function Index() {
                   <AnimatedCounter 
                     end={stat.value} 
                     suffix={stat.suffix}
-                    className="text-gradient"
+                    className="text-cyan"
                   />
                 </div>
                 <div className="text-muted-foreground text-lg">{stat.label}</div>
