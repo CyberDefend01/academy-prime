@@ -328,7 +328,7 @@ export default function AdminCourseEditor() {
                       id="instructor_name"
                       value={formData.instructor_name}
                       onChange={(e) => setFormData(prev => ({ ...prev, instructor_name: e.target.value }))}
-                      placeholder="John Doe"
+                      placeholder="Abubakar"
                       className={errors.instructor_name ? "border-destructive" : ""}
                     />
                     {errors.instructor_name && <p className="text-sm text-destructive">{errors.instructor_name}</p>}

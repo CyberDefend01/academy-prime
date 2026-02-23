@@ -377,7 +377,7 @@ export default function AdminUsers() {
                   <Label htmlFor="new-user-name">Full Name *</Label>
                   <Input
                     id="new-user-name"
-                    placeholder="John Doe"
+                    placeholder="Abubakar"
                     value={newUser.fullName}
                     onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                   />
@@ -387,7 +387,7 @@ export default function AdminUsers() {
                   <Input
                     id="new-user-email"
                     type="email"
-                    placeholder="john@example.com"
+                    placeholder="abubakar@example.com"
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   />
