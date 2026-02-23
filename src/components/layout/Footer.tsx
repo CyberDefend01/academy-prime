@@ -25,7 +25,7 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="relative border-t border-sky-400/40 overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(205 85% 55%), hsl(210 90% 48%), hsl(205 85% 55%))' }}>
+    <footer className="relative border-t border-sky-400/40 overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(210 85% 40%), hsl(215 90% 35%), hsl(210 85% 40%))' }}>
       {/* Cyber watermark background */}
       <div 
         className="absolute inset-0 opacity-[0.08] pointer-events-none"
