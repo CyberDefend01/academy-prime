@@ -90,9 +90,90 @@ INSERT INTO public.learning_path_courses (id, learning_path_id, course_id, sort_
 -- Replace YOUR_NEW_PROJECT_ID with your new Supabase project ID
 -- ========================================
 
--- You'll need to insert this manually due to the large HTML content
--- Go to your Supabase dashboard > Table Editor > certificate_templates
--- And create a new row with the template HTML from your current project
+-- IMPORTANT: Replace YOUR_NEW_PROJECT_ID below with your actual new Supabase project ID
+INSERT INTO public.certificate_templates (id, name, description, is_default, is_active, template_html) VALUES
+('ea4b50a9-47fc-48ac-8614-8e550e098c85', 'Cyber Defend Academy - Ultra Modern', 'Ultra-modern international standard certificate with academy branding, holographic accents, and QR verification', true, true, '<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Certificate of Completion</title>
+<style>
+@import url(''https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@400;600;700;800&display=swap'');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:''Plus Jakarta Sans'',sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cert-page{width:1056px;height:816px;margin:0 auto;position:relative;overflow:hidden;background:#fff;}
+.cert-frame{position:absolute;inset:12px;border:3px solid #1a365d;border-radius:8px;}
+.cert-frame-inner{position:absolute;inset:4px;border:1px solid #c9a84c;border-radius:6px;}
+.corner{position:absolute;width:60px;height:60px;}
+.corner svg{width:100%;height:100%;}
+.corner-tl{top:20px;left:20px;}.corner-tr{top:20px;right:20px;transform:scaleX(-1);}.corner-bl{bottom:20px;left:20px;transform:scaleY(-1);}.corner-br{bottom:20px;right:20px;transform:scale(-1);}
+.holo-strip{position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#1a365d,#2563eb,#06b6d4,#c9a84c,#06b6d4,#2563eb,#1a365d);}
+.watermark{position:absolute;inset:0;opacity:0.03;background-image:repeating-linear-gradient(45deg,transparent,transparent 35px,#1a365d 35px,#1a365d 36px);pointer-events:none;}
+.cert-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:50px 70px;}
+.logo-section{display:flex;align-items:center;gap:16px;margin-bottom:8px;}
+.logo-img{width:72px;height:72px;object-fit:contain;}
+.academy-name{font-family:''Playfair Display'',serif;font-size:22px;font-weight:800;color:#1a365d;letter-spacing:1px;text-transform:uppercase;}
+.academy-tagline{font-size:10px;color:#64748b;letter-spacing:3px;text-transform:uppercase;margin-top:2px;}
+.divider{display:flex;align-items:center;gap:12px;margin:14px 0;width:100%;}
+.divider-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);}
+.divider-diamond{width:8px;height:8px;background:#c9a84c;transform:rotate(45deg);}
+.cert-title{font-family:''Playfair Display'',serif;font-size:36px;font-weight:700;color:#1a365d;letter-spacing:3px;text-transform:uppercase;margin:6px 0 4px;}
+.cert-subtitle{font-size:12px;color:#64748b;letter-spacing:4px;text-transform:uppercase;}
+.presented-to{font-size:12px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;margin-top:18px;}
+.recipient-name{font-family:''Playfair Display'',serif;font-size:34px;font-weight:700;color:#0f172a;margin:8px 0;border-bottom:2px solid #c9a84c;padding-bottom:6px;display:inline-block;}
+.completion-text{font-size:14px;color:#475569;line-height:1.7;max-width:640px;text-align:center;margin:10px 0;}
+.course-name{font-size:18px;font-weight:700;color:#1a365d;margin:6px 0;}
+.meta-row{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:20px;padding:0 20px;}
+.meta-col{text-align:center;}
+.meta-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;}
+.meta-value{font-size:13px;font-weight:600;color:#0f172a;}
+.sig-line{width:160px;border-top:1px solid #1a365d;margin:0 auto 4px;}
+.seal{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#f59e0b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;text-align:center;line-height:1.2;border:3px solid #1a365d;box-shadow:0 4px 12px rgba(201,168,76,0.4);}
+.cert-footer{position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:9px;color:#94a3b8;letter-spacing:0.5px;}
+@media print{.cert-page{box-shadow:none;}}
+</style>
+</head>
+<body>
+<div class="cert-page">
+  <div class="holo-strip"></div>
+  <div class="cert-frame"><div class="cert-frame-inner"></div></div>
+  <div class="watermark"></div>
+  <div class="cert-content">
+    <div class="logo-section">
+      <img src="https://YOUR_NEW_PROJECT_ID.supabase.co/storage/v1/object/public/academy-assets/logo.png" alt="CDAA Logo" class="logo-img" />
+      <div>
+        <div class="academy-name">Cyber Defend Academy Africa</div>
+        <div class="academy-tagline">Securing Africa''s Digital Future</div>
+      </div>
+    </div>
+    <div class="divider"><div class="divider-line"></div><div class="divider-diamond"></div><div class="divider-line"></div></div>
+    <div class="cert-subtitle">This is to certify that</div>
+    <div class="cert-title">Certificate of Completion</div>
+    <div class="presented-to">Is proudly presented to</div>
+    <div class="recipient-name">{{STUDENT_NAME}}</div>
+    <div class="completion-text">For successfully completing the professional training program in</div>
+    <div class="course-name">{{COURSE_NAME}}</div>
+    <div class="completion-text" style="margin-top:4px;font-size:12px;">Having demonstrated competence and dedication in the field of cybersecurity, this certificate is awarded in recognition of academic excellence and professional growth.</div>
+    <div class="divider" style="margin:16px 0;"><div class="divider-line"></div><div class="divider-diamond"></div><div class="divider-line"></div></div>
+    <div class="meta-row">
+      <div class="meta-col">
+        <div class="sig-line"></div>
+        <div class="meta-value">Director of Training</div>
+        <div class="meta-label">CDAA Authority</div>
+      </div>
+      <div class="seal">CDAA<br>VERIFIED</div>
+      <div class="meta-col">
+        <div class="meta-label">Date of Issue</div>
+        <div class="meta-value">{{ISSUE_DATE}}</div>
+        <div class="meta-label" style="margin-top:8px;">Verification ID</div>
+        <div class="meta-value" style="font-family:monospace;font-size:11px;">{{VERIFICATION_ID}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="cert-footer">Cyber Defend Academy Africa &bull; Official Certificate &bull; Verify at academy portal &bull; {{VERIFICATION_ID}}</div>
+</div>
+</body>
+</html>');
 
 -- ============================================================
 -- IMPORTANT NOTES FOR USER-SPECIFIC DATA:
