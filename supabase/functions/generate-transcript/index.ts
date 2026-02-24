@@ -102,7 +102,7 @@ serve(async (req) => {
 
     const academyName = settings?.find((s: any) => s.key === "academy_name")?.value || "Cyber Defend Academy Africa";
     const academyShort = settings?.find((s: any) => s.key === "academy_short")?.value || "CDAA";
-    const logoUrl = "https://jasebalftkngpbcnonxr.supabase.co/storage/v1/object/public/academy-assets/logo.png";
+    const logoUrl = "https://vdphyoemakzlgwffkrqs.supabase.co/storage/v1/object/public/academy-assets/logo.png";
 
     const studentName = profile?.full_name || "Student";
     const studentEmail = studentUser?.email || "N/A";
